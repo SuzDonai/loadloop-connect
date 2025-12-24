@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Truck, Package, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, Building } from "lucide-react";
+import { Truck, Package, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Role = "driver" | "shipper";
@@ -17,7 +17,6 @@ const Register = () => {
     name: "",
     email: "",
     phone: "",
-    company: "",
     password: "",
     confirmPassword: "",
   });
@@ -172,20 +171,6 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="company">Company Name</Label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="company"
-                  name="company"
-                  placeholder="Your Company Ltd."
-                  value={formData.company}
-                  onChange={handleChange}
-                  className="pl-10 h-12"
-                />
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
