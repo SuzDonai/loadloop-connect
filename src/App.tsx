@@ -11,8 +11,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import DriverDashboard from "./pages/driver/Dashboard";
 import DriverMatches from "./pages/driver/Matches";
+import DriverFindLoads from "./pages/driver/FindLoads";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostCargo from "./pages/shipper/PostCargo";
+import ShipperMyLoads from "./pages/shipper/MyLoads";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -32,10 +34,12 @@ const App = () => (
         {/* Driver Routes */}
         <Route path="/driver/dashboard" element={<DriverDashboard />} />
         <Route path="/driver/matches" element={<DriverMatches />} />
+        <Route path="/driver/find-loads" element={<DriverFindLoads />} />
 
         {/* Shipper Routes */}
         <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
         <Route path="/shipper/post-cargo" element={<PostCargo />} />
+        <Route path="/shipper/my-loads" element={<ShipperMyLoads />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

@@ -25,6 +25,7 @@ interface DashboardLayoutProps {
 
 const driverLinks = [
   { name: "Dashboard", path: "/driver/dashboard", icon: LayoutDashboard },
+  { name: "Find Loads", path: "/driver/find-loads", icon: Search },
   { name: "Find Matches", path: "/driver/matches", icon: MapPin },
   { name: "My Vehicle", path: "/driver/vehicle", icon: Truck },
   { name: "Trip History", path: "/driver/history", icon: History },
@@ -34,7 +35,7 @@ const driverLinks = [
 const shipperLinks = [
   { name: "Dashboard", path: "/shipper/dashboard", icon: LayoutDashboard },
   { name: "Post Cargo", path: "/shipper/post-cargo", icon: Package },
-  { name: "My Loads", path: "/shipper/loads", icon: MapPin },
+  { name: "My Loads", path: "/shipper/my-loads", icon: MapPin },
   { name: "Matches", path: "/shipper/matches", icon: Truck },
   { name: "History", path: "/shipper/history", icon: History },
   { name: "Profile", path: "/shipper/profile", icon: User },
