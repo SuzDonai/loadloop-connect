@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Truck, Package, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 type Role = "driver" | "shipper";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
   const initialRole = (searchParams.get("role") as Role) || "shipper";
+  const navigate = useNavigate();
   
   const [role, setRole] = useState<Role>(initialRole);
   const [formData, setFormData] = useState({
@@ -23,6 +25,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -40,16 +43,46 @@ const Register = () => {
       return;
     }
 
+    if (formData.password.length < 8) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 8 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // TODO: Implement actual registration with Supabase
-    setTimeout(() => {
+    const { error } = await signUp(formData.email, formData.password, {
+      name: formData.name,
+      phone: formData.phone,
+      role: role,
+    });
+
+    if (error) {
       setIsLoading(false);
+      let errorMessage = error.message;
+      
+      if (error.message.includes("already registered")) {
+        errorMessage = "This email is already registered. Please sign in instead.";
+      }
+
       toast({
-        title: "Registration functionality",
-        description: "Backend integration coming soon! Connect Supabase to enable authentication.",
+        title: "Registration failed",
+        description: errorMessage,
+        variant: "destructive",
       });
-    }, 1000);
+      return;
+    }
+
+    toast({
+      title: "Account created!",
+      description: "Welcome to LoadLoop. You're now signed in.",
+    });
+
+    setIsLoading(false);
+    navigate("/");
   };
 
   return (
@@ -170,7 +203,6 @@ const Register = () => {
                 </div>
               </div>
             </div>
-
 
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
