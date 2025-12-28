@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -54,6 +55,12 @@ const DashboardLayout = ({ children, userRole, userName = "User" }: DashboardLay
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   const links = userRole === "driver" ? driverLinks : userRole === "shipper" ? shipperLinks : adminLinks;
   const roleColor = userRole === "driver" ? "secondary" : userRole === "shipper" ? "primary" : "accent";
@@ -118,7 +125,7 @@ const DashboardLayout = ({ children, userRole, userName = "User" }: DashboardLay
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-destructive"
-              onClick={() => navigate("/login")}
+              onClick={handleSignOut}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out

@@ -15,6 +15,7 @@ import DriverFindLoads from "./pages/driver/FindLoads";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostCargo from "./pages/shipper/PostCargo";
 import ShipperMyLoads from "./pages/shipper/MyLoads";
+import ShipperProfile from "./pages/shipper/Profile";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
         <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
         <Route path="/shipper/post-cargo" element={<PostCargo />} />
         <Route path="/shipper/my-loads" element={<ShipperMyLoads />} />
+        <Route path="/shipper/profile" element={<ShipperProfile />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

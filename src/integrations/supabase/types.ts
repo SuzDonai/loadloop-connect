@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      loads: {
+        Row: {
+          assigned_driver_id: string | null
+          created_at: string
+          description: string | null
+          drop_city: string
+          id: string
+          pickup_city: string
+          pickup_date: string
+          pickup_time: string
+          price: number | null
+          shipper_id: string
+          status: string
+          updated_at: string
+          vehicle_type: string
+          volume: number | null
+          weight: number
+        }
+        Insert: {
+          assigned_driver_id?: string | null
+          created_at?: string
+          description?: string | null
+          drop_city: string
+          id?: string
+          pickup_city: string
+          pickup_date: string
+          pickup_time: string
+          price?: number | null
+          shipper_id: string
+          status?: string
+          updated_at?: string
+          vehicle_type: string
+          volume?: number | null
+          weight: number
+        }
+        Update: {
+          assigned_driver_id?: string | null
+          created_at?: string
+          description?: string | null
+          drop_city?: string
+          id?: string
+          pickup_city?: string
+          pickup_date?: string
+          pickup_time?: string
+          price?: number | null
+          shipper_id?: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+          volume?: number | null
+          weight?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
