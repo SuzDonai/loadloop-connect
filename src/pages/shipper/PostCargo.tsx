@@ -7,12 +7,13 @@ import {
   MapPin, 
   Package, 
   Calendar, 
-  Truck,
   ArrowRight,
   Info
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const vehicleTypes = [
   "Open Truck",
@@ -33,10 +34,12 @@ const PostCargo = () => {
     pickupDate: "",
     pickupTime: "",
     description: "",
+    price: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -44,21 +47,52 @@ const PostCargo = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to post cargo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // TODO: Implement actual cargo posting with Supabase
-    setTimeout(() => {
-      setIsLoading(false);
+    const { error } = await supabase.from("loads").insert({
+      shipper_id: user.id,
+      pickup_city: formData.origin,
+      drop_city: formData.destination,
+      weight: parseFloat(formData.weight),
+      volume: formData.volume ? parseFloat(formData.volume) : null,
+      vehicle_type: formData.vehicleType,
+      pickup_date: formData.pickupDate,
+      pickup_time: formData.pickupTime,
+      description: formData.description || null,
+      price: formData.price ? parseFloat(formData.price) : 0,
+      status: "open",
+    });
+
+    setIsLoading(false);
+
+    if (error) {
       toast({
-        title: "Cargo Posted Successfully!",
-        description: "We're finding the best matches for your shipment.",
+        title: "Error",
+        description: "Failed to post cargo. Please try again.",
+        variant: "destructive",
       });
-      navigate("/shipper/loads");
-    }, 1500);
+      return;
+    }
+
+    toast({
+      title: "Cargo Posted Successfully!",
+      description: "We're finding the best matches for your shipment.",
+    });
+    navigate("/shipper/my-loads");
   };
 
   return (
-    <DashboardLayout userRole="shipper" userName="ABC Logistics">
+    <DashboardLayout userRole="shipper" userName={profile?.name || "Shipper"}>
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div>
@@ -153,6 +187,20 @@ const PostCargo = () => {
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price">Price (₹)</Label>
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                placeholder="e.g., 25000"
+                value={formData.price}
+                onChange={handleChange}
+                className="h-12"
+                required
+              />
             </div>
 
             <div className="space-y-2">
