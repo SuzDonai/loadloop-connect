@@ -82,7 +82,12 @@ const Register = () => {
     });
 
     setIsLoading(false);
-    navigate("/");
+    // Redirect based on role
+    if (role === "driver") {
+      navigate("/driver/matches");
+    } else {
+      navigate("/shipper/dashboard");
+    }
   };
 
   return (

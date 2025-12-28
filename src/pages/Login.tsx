@@ -37,11 +37,16 @@ const Login = () => {
       description: "You have successfully signed in.",
     });
 
-    // Small delay to allow profile to load
+    // Small delay to allow profile to load, then redirect based on role
     setTimeout(() => {
       setIsLoading(false);
-      // Navigate based on role - will be handled by profile update
-      navigate("/");
+      if (profile?.role === "driver") {
+        navigate("/driver/matches");
+      } else if (profile?.role === "shipper") {
+        navigate("/shipper/dashboard");
+      } else {
+        navigate("/");
+      }
     }, 500);
   };
 
