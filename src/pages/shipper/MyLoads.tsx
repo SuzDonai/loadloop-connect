@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { LoadCard } from "@/components/loads/LoadCard";
 import { LoadCardSkeleton } from "@/components/loads/LoadCardSkeleton";
+import { MatchingRidesModal } from "@/components/loads/MatchingRidesModal";
 import { fetchLoads, deleteLoad, type Load } from "@/data/mockLoads";
 import { toast } from "sonner";
 import { Search, Package, Plus } from "lucide-react";
@@ -36,6 +37,7 @@ export default function MyLoads() {
     "all"
   );
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [matchingLoadId, setMatchingLoadId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -85,9 +87,20 @@ export default function MyLoads() {
   };
 
   const handleViewMatches = (id: string) => {
-    toast.info(`Viewing matches for load ${id}`);
-    // Navigate to matches page when implemented
+    setMatchingLoadId(id);
   };
+
+  const handleDriverAssigned = (loadId: string, driverId: string) => {
+    setLoads((prev) =>
+      prev.map((load) =>
+        load.id === loadId ? { ...load, status: "assigned" as const } : load
+      )
+    );
+  };
+
+  const selectedLoad = matchingLoadId
+    ? loads.find((l) => l.id === matchingLoadId) || null
+    : null;
 
   return (
     <DashboardLayout userRole="shipper" userName="Shipper">
@@ -230,6 +243,14 @@ export default function MyLoads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Matching Rides Modal */}
+      <MatchingRidesModal
+        open={!!matchingLoadId}
+        onOpenChange={(open) => !open && setMatchingLoadId(null)}
+        load={selectedLoad}
+        onAssign={handleDriverAssigned}
+      />
     </DashboardLayout>
   );
 }
