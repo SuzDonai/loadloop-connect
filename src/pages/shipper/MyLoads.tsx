@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
 import { LoadCard } from "@/components/loads/LoadCard";
 import { LoadCardSkeleton } from "@/components/loads/LoadCardSkeleton";
 import { MatchingRidesModal } from "@/components/loads/MatchingRidesModal";
-import { fetchLoads, deleteLoad, type Load } from "@/data/mockLoads";
 import { toast } from "sonner";
 import { Search, Package, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -26,11 +25,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Tables } from "@/integrations/supabase/types";
+
+type Load = Tables<'loads'>;
 
 export default function MyLoads() {
   const navigate = useNavigate();
-  const [loads, setLoads] = useState<Load[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [pickupSearch, setPickupSearch] = useState("");
   const [dropSearch, setDropSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "assigned">(
@@ -39,28 +44,28 @@ export default function MyLoads() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [matchingLoadId, setMatchingLoadId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchLoads();
-      setLoads(data);
-    } catch (error) {
-      toast.error("Failed to load data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: loads = [], isLoading } = useQuery({
+    queryKey: ['shipper-loads', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('loads')
+        .select('*')
+        .eq('shipper_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   const filteredLoads = useMemo(() => {
     return loads.filter((load) => {
-      const matchesPickup = load.pickupCity
+      const matchesPickup = load.pickup_city
         .toLowerCase()
         .includes(pickupSearch.toLowerCase());
-      const matchesDrop = load.dropCity
+      const matchesDrop = load.drop_city
         .toLowerCase()
         .includes(dropSearch.toLowerCase());
       const matchesStatus =
@@ -74,11 +79,15 @@ export default function MyLoads() {
     if (!deleteId) return;
 
     try {
-      const success = await deleteLoad(deleteId);
-      if (success) {
-        setLoads((prev) => prev.filter((load) => load.id !== deleteId));
-        toast.success("Load deleted successfully");
-      }
+      const { error } = await supabase
+        .from('loads')
+        .delete()
+        .eq('id', deleteId);
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['shipper-loads', user?.id] });
+      toast.success("Load deleted successfully");
     } catch (error) {
       toast.error("Failed to delete load");
     } finally {
@@ -91,11 +100,7 @@ export default function MyLoads() {
   };
 
   const handleDriverAssigned = (loadId: string, driverId: string) => {
-    setLoads((prev) =>
-      prev.map((load) =>
-        load.id === loadId ? { ...load, status: "assigned" as const } : load
-      )
-    );
+    queryClient.invalidateQueries({ queryKey: ['shipper-loads', user?.id] });
   };
 
   const selectedLoad = matchingLoadId
@@ -103,7 +108,7 @@ export default function MyLoads() {
     : null;
 
   return (
-    <DashboardLayout userRole="shipper" userName="Shipper">
+    <DashboardLayout userRole="shipper" userName={profile?.name || "Shipper"}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

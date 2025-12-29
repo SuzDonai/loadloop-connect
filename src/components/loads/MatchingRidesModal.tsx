@@ -25,7 +25,9 @@ import {
   type Driver,
 } from "@/data/mockDrivers";
 import { toast } from "sonner";
-import type { Load } from "@/data/mockLoads";
+import { Tables } from "@/integrations/supabase/types";
+
+type Load = Tables<'loads'>;
 
 interface MatchingRidesModalProps {
   open: boolean;
@@ -119,11 +121,11 @@ export function MatchingRidesModal({
           {load && (
             <DialogDescription className="flex items-center gap-2">
               <MapPin className="w-4 h-4" />
-              {load.pickupCity} → {load.dropCity}
+              {load.pickup_city} → {load.drop_city}
               <span className="text-muted-foreground">•</span>
               {load.weight} tons
               <span className="text-muted-foreground">•</span>
-              ₹{load.price.toLocaleString("en-IN")}
+              ₹{(load.price || 0).toLocaleString("en-IN")}
             </DialogDescription>
           )}
         </DialogHeader>
