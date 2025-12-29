@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LoadCard } from "@/components/loads/LoadCard";
 import { LoadCardSkeleton } from "@/components/loads/LoadCardSkeleton";
-import { fetchLoads, acceptLoad, type Load } from "@/data/mockLoads";
 import { toast } from "sonner";
 import { Search, Truck, IndianRupee } from "lucide-react";
 import {
@@ -18,43 +17,43 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function FindLoads() {
-  const [loads, setLoads] = useState<Load[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [pickupSearch, setPickupSearch] = useState("");
   const [dropSearch, setDropSearch] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchLoads();
-      // Only show open loads for drivers
-      setLoads(data.filter((l) => l.status === "open"));
-    } catch (error) {
-      toast.error("Failed to load available loads");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: loads = [], isLoading } = useQuery({
+    queryKey: ['open-loads'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('loads')
+        .select('*')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const filteredLoads = useMemo(() => {
     return loads.filter((load) => {
-      const matchesPickup = load.pickupCity
+      const matchesPickup = load.pickup_city
         .toLowerCase()
         .includes(pickupSearch.toLowerCase());
-      const matchesDrop = load.dropCity
+      const matchesDrop = load.drop_city
         .toLowerCase()
         .includes(dropSearch.toLowerCase());
       const matchesPrice = minPrice
-        ? load.price >= parseInt(minPrice)
+        ? (load.price || 0) >= parseInt(minPrice)
         : true;
 
       return matchesPickup && matchesDrop && matchesPrice;
@@ -62,23 +61,29 @@ export default function FindLoads() {
   }, [loads, pickupSearch, dropSearch, minPrice]);
 
   const handleAccept = async () => {
-    if (!confirmAcceptId) return;
+    if (!confirmAcceptId || !user) return;
 
     setAcceptingId(confirmAcceptId);
     setConfirmAcceptId(null);
 
     try {
-      const success = await acceptLoad(confirmAcceptId);
-      if (success) {
-        setLoads((prev) => prev.filter((load) => load.id !== confirmAcceptId));
-        toast.success("Load accepted successfully! 🚛", {
-          description: "You can view this load in your assigned loads.",
-        });
-      } else {
-        toast.error("Failed to accept load. It may already be assigned.");
-      }
+      const { error } = await supabase
+        .from('loads')
+        .update({ 
+          status: 'assigned',
+          assigned_driver_id: user.id 
+        })
+        .eq('id', confirmAcceptId)
+        .eq('status', 'open');
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ['open-loads'] });
+      toast.success("Load accepted successfully!", {
+        description: "You can view this load in your assigned loads.",
+      });
     } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+      toast.error("Failed to accept load. It may already be assigned.");
     } finally {
       setAcceptingId(null);
     }
@@ -86,11 +91,11 @@ export default function FindLoads() {
 
   // Calculate potential earnings
   const totalPotentialEarnings = useMemo(() => {
-    return filteredLoads.reduce((sum, load) => sum + load.price, 0);
+    return filteredLoads.reduce((sum, load) => sum + (load.price || 0), 0);
   }, [filteredLoads]);
 
   return (
-    <DashboardLayout userRole="driver" userName="Driver">
+    <DashboardLayout userRole="driver" userName={profile?.name || "Driver"}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

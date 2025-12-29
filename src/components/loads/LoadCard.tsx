@@ -2,7 +2,10 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Weight, IndianRupee, Truck, Trash2, Eye } from "lucide-react";
-import type { Load } from "@/data/mockLoads";
+import { Tables } from "@/integrations/supabase/types";
+import { formatDistanceToNow } from "date-fns";
+
+type Load = Tables<'loads'>;
 
 interface LoadCardProps {
   load: Load;
@@ -26,9 +29,9 @@ export function LoadCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-mono">{load.id}</span>
+            <span className="font-mono">{load.id.slice(0, 8)}</span>
             <span>•</span>
-            <span>{new Date(load.createdAt).toLocaleDateString()}</span>
+            <span>{formatDistanceToNow(new Date(load.created_at), { addSuffix: true })}</span>
           </div>
           <Badge
             variant={load.status === "open" ? "default" : "secondary"}
@@ -54,11 +57,11 @@ export function LoadCard({
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">{load.pickupCity}</span>
+              <span className="font-medium">{load.pickup_city}</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">{load.dropCity}</span>
+              <span className="font-medium">{load.drop_city}</span>
             </div>
           </div>
         </div>
@@ -75,24 +78,11 @@ export function LoadCard({
             <IndianRupee className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">
               <span className="font-semibold">
-                {load.price.toLocaleString("en-IN")}
+                {(load.price || 0).toLocaleString("en-IN")}
               </span>
             </span>
           </div>
         </div>
-
-        {/* Matching rides for shipper */}
-        {variant === "shipper" && load.status === "open" && (
-          <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-lg px-3 py-2">
-            <Truck className="w-4 h-4 text-primary" />
-            <span>
-              <span className="font-semibold text-primary">
-                {load.matchingRides}
-              </span>{" "}
-              matching rides available
-            </span>
-          </div>
-        )}
       </CardContent>
 
       <CardFooter className="gap-2 pt-0">
