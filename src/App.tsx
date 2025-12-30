@@ -12,6 +12,8 @@ import Register from "./pages/Register";
 import DriverDashboard from "./pages/driver/Dashboard";
 import DriverMatches from "./pages/driver/Matches";
 import DriverFindLoads from "./pages/driver/FindLoads";
+import DriverTripHistory from "./pages/driver/TripHistory";
+import DriverMyVehicle from "./pages/driver/MyVehicle";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostCargo from "./pages/shipper/PostCargo";
 import ShipperMyLoads from "./pages/shipper/MyLoads";
@@ -36,6 +38,8 @@ const App = () => (
         <Route path="/driver/dashboard" element={<DriverDashboard />} />
         <Route path="/driver/matches" element={<DriverMatches />} />
         <Route path="/driver/find-loads" element={<DriverFindLoads />} />
+        <Route path="/driver/trip-history" element={<DriverTripHistory />} />
+        <Route path="/driver/my-vehicle" element={<DriverMyVehicle />} />
 
         {/* Shipper Routes */}
         <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
