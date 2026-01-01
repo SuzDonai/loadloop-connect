@@ -19,6 +19,7 @@ import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostCargo from "./pages/shipper/PostCargo";
 import ShipperMyLoads from "./pages/shipper/MyLoads";
 import ShipperProfile from "./pages/shipper/Profile";
+import ShipperLoadHistory from "./pages/shipper/LoadHistory";
 import AdminDashboard from "./pages/admin/Dashboard";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ const App = () => (
         <Route path="/shipper/post-cargo" element={<PostCargo />} />
         <Route path="/shipper/my-loads" element={<ShipperMyLoads />} />
         <Route path="/shipper/profile" element={<ShipperProfile />} />
+        <Route path="/shipper/load-history" element={<ShipperLoadHistory />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

@@ -37,8 +37,7 @@ const shipperLinks = [
   { name: "Dashboard", path: "/shipper/dashboard", icon: LayoutDashboard },
   { name: "Post Cargo", path: "/shipper/post-cargo", icon: Package },
   { name: "My Loads", path: "/shipper/my-loads", icon: MapPin },
-  { name: "Matches", path: "/shipper/matches", icon: Truck },
-  { name: "History", path: "/shipper/history", icon: History },
+  { name: "Load History", path: "/shipper/load-history", icon: History },
   { name: "Profile", path: "/shipper/profile", icon: User },
 ];
 
