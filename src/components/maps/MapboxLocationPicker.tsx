@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X } from 'lucide-react';
+import { MapPin, Search, X, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Maharashtra bounds
@@ -42,35 +42,54 @@ const MapboxLocationPicker: React.FC<MapboxLocationPickerProps> = ({
   const [showMap, setShowMap] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   // Fetch Mapbox token from edge function with authentication
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          console.error('No active session for Mapbox token fetch');
-          return;
-        }
-
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
-        const data = await response.json();
-        if (data.token) {
-          setMapboxToken(data.token);
-        }
-      } catch (error) {
-        console.error('Failed to fetch Mapbox token:', error);
+  const fetchToken = useCallback(async () => {
+    setTokenLoading(true);
+    setTokenError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setTokenError('Please log in to use the map');
+        return;
       }
-    };
-    fetchToken();
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch map token');
+      }
+      
+      const data = await response.json();
+      if (data.token) {
+        setMapboxToken(data.token);
+      } else {
+        throw new Error('No token received');
+      }
+    } catch (error) {
+      console.error('Failed to fetch Mapbox token:', error);
+      setTokenError(error instanceof Error ? error.message : 'Failed to load map');
+    } finally {
+      setTokenLoading(false);
+    }
   }, []);
+
+  // Fetch token when map is shown
+  useEffect(() => {
+    if (showMap && !mapboxToken && !tokenLoading) {
+      fetchToken();
+    }
+  }, [showMap, mapboxToken, tokenLoading, fetchToken]);
 
   // Initialize map
   useEffect(() => {
@@ -253,14 +272,31 @@ const MapboxLocationPicker: React.FC<MapboxLocationPickerProps> = ({
       {/* Map Container */}
       {showMap && (
         <div className="relative rounded-lg overflow-hidden border border-border">
-          <div
-            ref={mapContainer}
-            className="w-full h-64"
-            style={{ minHeight: '256px' }}
-          />
-          <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded text-xs text-muted-foreground">
-            Click on map to select location (Maharashtra only)
-          </div>
+          {tokenLoading ? (
+            <div className="w-full h-64 flex items-center justify-center bg-muted">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Loading map...</span>
+            </div>
+          ) : tokenError ? (
+            <div className="w-full h-64 flex flex-col items-center justify-center bg-muted gap-2">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+              <span className="text-sm text-muted-foreground">{tokenError}</span>
+              <Button type="button" variant="outline" size="sm" onClick={fetchToken}>
+                Retry
+              </Button>
+            </div>
+          ) : mapboxToken ? (
+            <>
+              <div
+                ref={mapContainer}
+                className="w-full h-64"
+                style={{ minHeight: '256px' }}
+              />
+              <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded text-xs text-muted-foreground">
+                Click on map to select location (Maharashtra only)
+              </div>
+            </>
+          ) : null}
         </div>
       )}
     </div>
