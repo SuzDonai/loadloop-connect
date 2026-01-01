@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import MapboxLocationPicker from "@/components/maps/MapboxLocationPicker";
 
 const vehicleTypes = [
   "Open Truck",
@@ -109,31 +110,19 @@ const PostCargo = () => {
               Route Details
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="origin">Pickup Location</Label>
-                <Input
-                  id="origin"
-                  name="origin"
-                  placeholder="e.g., Pune, Maharashtra"
-                  value={formData.origin}
-                  onChange={handleChange}
-                  className="h-12"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="destination">Delivery Location</Label>
-                <Input
-                  id="destination"
-                  name="destination"
-                  placeholder="e.g., Mumbai, Maharashtra"
-                  value={formData.destination}
-                  onChange={handleChange}
-                  className="h-12"
-                  required
-                />
-              </div>
+            <div className="grid md:grid-cols-1 gap-6">
+              <MapboxLocationPicker
+                value={formData.origin}
+                onChange={(location) => setFormData({ ...formData, origin: location })}
+                placeholder="Search pickup location in Maharashtra..."
+                label="Pickup Location"
+              />
+              <MapboxLocationPicker
+                value={formData.destination}
+                onChange={(location) => setFormData({ ...formData, destination: location })}
+                placeholder="Search delivery location in Maharashtra..."
+                label="Delivery Location"
+              />
             </div>
           </div>
 
