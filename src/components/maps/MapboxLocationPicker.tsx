@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MapPin, Search, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Maharashtra bounds
 const MAHARASHTRA_BOUNDS: [[number, number], [number, number]] = [
@@ -42,12 +43,23 @@ const MapboxLocationPicker: React.FC<MapboxLocationPickerProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
 
-  // Fetch Mapbox token from edge function
+  // Fetch Mapbox token from edge function with authentication
   useEffect(() => {
     const fetchToken = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          console.error('No active session for Mapbox token fetch');
+          return;
+        }
+
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
         );
         const data = await response.json();
         if (data.token) {
