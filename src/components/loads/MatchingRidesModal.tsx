@@ -21,11 +21,11 @@ import {
 } from "lucide-react";
 import {
   fetchMatchingDrivers,
-  assignDriver,
   type Driver,
 } from "@/data/mockDrivers";
 import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type Load = Tables<'loads'>;
 
@@ -69,13 +69,36 @@ export function MatchingRidesModal({
     if (!load) return;
     setAssigningId(driverId);
     try {
-      const success = await assignDriver(load.id, driverId);
-      if (success) {
-        toast.success("Driver assigned successfully!");
-        onAssign?.(load.id, driverId);
-        onOpenChange(false);
+      // Get current user to ensure shipper owns the load
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to assign a driver");
+        return;
       }
+
+      // Update load in database with driver assignment
+      // RLS policies ensure only the shipper who owns the load can update it
+      const { error } = await supabase
+        .from('loads')
+        .update({ 
+          assigned_driver_id: driverId,
+          status: 'assigned'
+        })
+        .eq('id', load.id)
+        .eq('shipper_id', user.id) // Ensure shipper owns the load
+        .eq('status', 'open'); // Only assign if still open
+
+      if (error) {
+        console.error('Failed to assign driver:', error);
+        toast.error("Failed to assign driver. Please try again.");
+        return;
+      }
+
+      toast.success("Driver assigned successfully!");
+      onAssign?.(load.id, driverId);
+      onOpenChange(false);
     } catch (error) {
+      console.error('Assignment error:', error);
       toast.error("Failed to assign driver");
     } finally {
       setAssigningId(null);
