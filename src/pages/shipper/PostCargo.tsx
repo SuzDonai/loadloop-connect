@@ -60,17 +60,22 @@ const PostCargo = () => {
 
     setIsLoading(true);
 
+    // Parse numeric values - use Number() for better precision with integers
+    const priceValue = formData.price ? Number(formData.price) : 0;
+    const weightValue = Number(formData.weight);
+    const volumeValue = formData.volume ? Number(formData.volume) : null;
+
     const { error } = await supabase.from("loads").insert({
       shipper_id: user.id,
       pickup_city: formData.origin,
       drop_city: formData.destination,
-      weight: parseFloat(formData.weight),
-      volume: formData.volume ? parseFloat(formData.volume) : null,
+      weight: weightValue,
+      volume: volumeValue,
       vehicle_type: formData.vehicleType,
       pickup_date: formData.pickupDate,
       pickup_time: formData.pickupTime,
       description: formData.description || null,
-      price: formData.price ? parseFloat(formData.price) : 0,
+      price: priceValue,
       status: "open",
     });
 
