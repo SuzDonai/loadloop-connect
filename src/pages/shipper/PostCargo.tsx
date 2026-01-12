@@ -189,6 +189,8 @@ const PostCargo = () => {
                 id="price"
                 name="price"
                 type="number"
+                step="1"
+                min="0"
                 placeholder="e.g., 25000"
                 value={formData.price}
                 onChange={handleChange}
