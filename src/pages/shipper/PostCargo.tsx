@@ -14,7 +14,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import MapboxLocationPicker from "@/components/maps/MapboxLocationPicker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const vehicleTypes = [
   "Open Truck",
@@ -23,6 +29,45 @@ const vehicleTypes = [
   "Mini Truck",
   "Refrigerated",
   "Tanker",
+];
+
+const maharashtraCities = [
+  "Ahilyanagar",
+  "Akola",
+  "Amravati",
+  "Chhatrapati Sambhajinagar",
+  "Beed",
+  "Bhandara",
+  "Buldhana",
+  "Chandrapur",
+  "Dhule",
+  "Gadchiroli",
+  "Gondia",
+  "Hingoli",
+  "Jalgaon",
+  "Jalna",
+  "Kolhapur",
+  "Latur",
+  "Mumbai City",
+  "Mumbai Suburban",
+  "Nagpur",
+  "Nanded",
+  "Nandurbar",
+  "Nashik",
+  "Dharashiv",
+  "Palghar",
+  "Parbhani",
+  "Pune",
+  "Raigad",
+  "Ratnagiri",
+  "Sangli",
+  "Satara",
+  "Sindhudurg",
+  "Solapur",
+  "Thane",
+  "Wardha",
+  "Washim",
+  "Yavatmal",
 ];
 
 const PostCargo = () => {
@@ -115,19 +160,43 @@ const PostCargo = () => {
               Route Details
             </div>
 
-            <div className="grid md:grid-cols-1 gap-6">
-              <MapboxLocationPicker
-                value={formData.origin}
-                onChange={(location) => setFormData({ ...formData, origin: location })}
-                placeholder="Search pickup location in Maharashtra..."
-                label="Pickup Location"
-              />
-              <MapboxLocationPicker
-                value={formData.destination}
-                onChange={(location) => setFormData({ ...formData, destination: location })}
-                placeholder="Search delivery location in Maharashtra..."
-                label="Delivery Location"
-              />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Pickup Location</Label>
+                <Select
+                  value={formData.origin}
+                  onValueChange={(value) => setFormData({ ...formData, origin: value })}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select pickup city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {maharashtraCities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Delivery Location</Label>
+                <Select
+                  value={formData.destination}
+                  onValueChange={(value) => setFormData({ ...formData, destination: value })}
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select delivery city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {maharashtraCities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
