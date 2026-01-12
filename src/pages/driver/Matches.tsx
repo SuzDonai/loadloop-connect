@@ -8,7 +8,7 @@ import {
   Filter,
   ArrowUpRight,
   Navigation,
-  Play
+  Square
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ const DriverMatches = () => {
   const queryClient = useQueryClient();
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
+  const [endingTripId, setEndingTripId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("available");
 
   // Fetch available loads
@@ -103,8 +104,26 @@ const DriverMatches = () => {
     }
   };
 
-  const handleStartRide = (loadId: string) => {
-    navigate(`/driver/ride/${loadId}`);
+  const handleEndTrip = async (loadId: string) => {
+    setEndingTripId(loadId);
+    try {
+      const { error } = await supabase
+        .from('loads')
+        .update({ status: 'completed' })
+        .eq('id', loadId)
+        .eq('assigned_driver_id', user?.id);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['driver-accepted-loads'] });
+      toast.success("Trip completed successfully!", {
+        description: "The load has been marked as delivered.",
+      });
+    } catch (error) {
+      toast.error("Failed to complete trip. Please try again.");
+    } finally {
+      setEndingTripId(null);
+    }
   };
 
   const isLoading = activeTab === "available" ? loadingAvailable : loadingAccepted;
@@ -134,7 +153,7 @@ const DriverMatches = () => {
             </TabsTrigger>
             <TabsTrigger value="accepted" className="gap-2">
               <Navigation className="w-4 h-4" />
-              Accepted ({acceptedLoads.length})
+              Ongoing Trip ({acceptedLoads.length})
             </TabsTrigger>
           </TabsList>
 
@@ -256,13 +275,13 @@ const DriverMatches = () => {
             </div>
           </TabsContent>
 
-          {/* Accepted Loads */}
+          {/* Ongoing Trip */}
           <TabsContent value="accepted" className="mt-6">
             <div className="grid gap-6">
               {loadingAccepted ? (
                 [...Array(2)].map((_, i) => (
                   <div key={i} className="bg-card rounded-2xl border border-border p-6">
-                    <Skeleton className="h-48 w-full mb-4" />
+                    <Skeleton className="h-64 w-full mb-4" />
                     <Skeleton className="h-6 w-48" />
                   </div>
                 ))
@@ -271,9 +290,9 @@ const DriverMatches = () => {
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <Navigation className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold">No accepted loads</h3>
+                  <h3 className="text-lg font-semibold">No ongoing trips</h3>
                   <p className="text-muted-foreground mt-1 max-w-sm">
-                    Accept a load from the available tab to start earning.
+                    Accept a load from the available tab to start your trip.
                   </p>
                   <Button 
                     variant="outline" 
@@ -287,62 +306,88 @@ const DriverMatches = () => {
                 acceptedLoads.map((load) => (
                   <div
                     key={load.id}
-                    className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden"
+                    className="bg-card rounded-2xl border-2 border-primary/20 shadow-lg overflow-hidden"
                   >
-                    {/* Map Preview */}
+                    {/* Large Map with Route */}
                     <RouteMap 
                       pickupCity={load.pickup_city} 
                       dropCity={load.drop_city}
-                      className="h-48"
+                      className="h-64"
                     />
 
-                    <div className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                        <div className="flex-1 space-y-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-display font-semibold text-lg">
-                              {load.pickup_city} → {load.drop_city}
-                            </span>
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              load.status === 'assigned' 
-                                ? 'bg-blue-500/10 text-blue-600' 
-                                : 'bg-amber-500/10 text-amber-600'
-                            }`}>
-                              {load.status === 'assigned' ? 'Assigned' : 'In Progress'}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Package className="w-4 h-4" />
-                              {load.weight} tons
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {load.vehicle_type}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {format(new Date(load.pickup_date), 'MMM dd')} at {load.pickup_time}
-                            </div>
-                          </div>
-
-                          <div className="text-2xl font-bold text-primary">
-                            ₹{(load.price || 0).toLocaleString("en-IN")}
+                    <div className="p-6 space-y-6">
+                      {/* Route Info */}
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Pickup</p>
+                            <p className="font-semibold">{load.pickup_city}</p>
                           </div>
                         </div>
-
-                        <div className="lg:w-48">
-                          <Button 
-                            onClick={() => handleStartRide(load.id)}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700"
-                            size="lg"
-                          >
-                            <Play className="w-5 h-5 mr-2" />
-                            Start Ride
-                          </Button>
+                        <div className="flex-1 h-1 bg-gradient-to-r from-emerald-500 via-primary to-red-500 rounded-full" />
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground text-right">Destination</p>
+                            <p className="font-semibold">{load.drop_city}</p>
+                          </div>
+                          <div className="w-4 h-4 rounded-full bg-red-500 ring-4 ring-red-500/20" />
                         </div>
                       </div>
+
+                      {/* Load Details */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-muted/50 rounded-xl p-3 text-center">
+                          <Package className="w-5 h-5 mx-auto text-muted-foreground mb-1" />
+                          <p className="text-xs text-muted-foreground">Weight</p>
+                          <p className="font-semibold">{load.weight} tons</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-xl p-3 text-center">
+                          <Truck className="w-5 h-5 mx-auto text-muted-foreground mb-1" />
+                          <p className="text-xs text-muted-foreground">Vehicle</p>
+                          <p className="font-semibold text-sm">{load.vehicle_type}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-xl p-3 text-center">
+                          <Clock className="w-5 h-5 mx-auto text-muted-foreground mb-1" />
+                          <p className="text-xs text-muted-foreground">Pickup</p>
+                          <p className="font-semibold text-sm">{format(new Date(load.pickup_date), 'MMM dd')}</p>
+                        </div>
+                        <div className="bg-primary/10 rounded-xl p-3 text-center">
+                          <p className="text-xs text-primary">Earnings</p>
+                          <p className="font-bold text-lg text-primary">₹{(load.price || 0).toLocaleString("en-IN")}</p>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="flex items-center justify-between">
+                        <div className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                          load.status === 'assigned' 
+                            ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' 
+                            : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                        }`}>
+                          {load.status === 'assigned' ? '📍 Ready to Start' : '🚛 In Progress'}
+                        </div>
+                      </div>
+
+                      {/* End Trip Button */}
+                      <Button 
+                        onClick={() => handleEndTrip(load.id)}
+                        disabled={endingTripId === load.id}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                        size="lg"
+                      >
+                        {endingTripId === load.id ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                            Completing Trip...
+                          </>
+                        ) : (
+                          <>
+                            <Square className="w-5 h-5 mr-2" />
+                            End Trip - Mark as Delivered
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 ))
