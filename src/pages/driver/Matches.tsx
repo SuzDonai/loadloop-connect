@@ -8,7 +8,9 @@ import {
   Filter,
   ArrowUpRight,
   Navigation,
-  Square
+  Square,
+  Phone,
+  User
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -55,12 +57,12 @@ const DriverMatches = () => {
     },
   });
 
-  // Fetch accepted/assigned loads
+  // Fetch accepted/assigned loads with shipper info
   const { data: acceptedLoads = [], isLoading: loadingAccepted } = useQuery({
     queryKey: ['driver-accepted-loads', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase
+      const { data: loadsData, error } = await supabase
         .from('loads')
         .select('*')
         .eq('assigned_driver_id', user.id)
@@ -68,7 +70,21 @@ const DriverMatches = () => {
         .order('pickup_date', { ascending: true });
       
       if (error) throw error;
-      return data || [];
+      if (!loadsData || loadsData.length === 0) return [];
+
+      // Fetch shipper profiles for accepted loads
+      const shipperIds = [...new Set(loadsData.map(load => load.shipper_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, phone')
+        .in('id', shipperIds);
+
+      // Attach shipper info to loads
+      return loadsData.map(load => ({
+        ...load,
+        shipper_name: profiles?.find(p => p.id === load.shipper_id)?.name || 'Unknown',
+        shipper_phone: profiles?.find(p => p.id === load.shipper_id)?.phone || null,
+      }));
     },
     enabled: !!user?.id,
   });
@@ -355,6 +371,26 @@ const DriverMatches = () => {
                         <div className="bg-primary/10 rounded-xl p-3 text-center">
                           <p className="text-xs text-primary">Earnings</p>
                           <p className="font-bold text-lg text-primary">₹{(load.price || 0).toLocaleString("en-IN")}</p>
+                        </div>
+                      </div>
+
+                      {/* Shipper Contact Info */}
+                      <div className="bg-secondary/10 rounded-xl p-4 border border-secondary/20">
+                        <h4 className="text-sm font-semibold text-secondary mb-2 flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          Shipper Contact
+                        </h4>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <p className="font-medium">{(load as any).shipper_name}</p>
+                          {(load as any).shipper_phone && (
+                            <a 
+                              href={`tel:${(load as any).shipper_phone}`}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                            >
+                              <Phone className="w-4 h-4" />
+                              {(load as any).shipper_phone}
+                            </a>
+                          )}
                         </div>
                       </div>
 
