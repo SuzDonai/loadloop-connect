@@ -382,13 +382,13 @@ const DriverMatches = () => {
                         </h4>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                           <p className="font-medium">{(load as any).shipper_name}</p>
-                          {(load as any).shipper_phone && (
+                          {((load as any).contact_phone || (load as any).shipper_phone) && (
                             <a 
-                              href={`tel:${(load as any).shipper_phone}`}
+                              href={`tel:${(load as any).contact_phone || (load as any).shipper_phone}`}
                               className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                             >
                               <Phone className="w-4 h-4" />
-                              {(load as any).shipper_phone}
+                              {(load as any).contact_phone || (load as any).shipper_phone}
                             </a>
                           )}
                         </div>

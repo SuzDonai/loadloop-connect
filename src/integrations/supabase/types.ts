@@ -17,6 +17,7 @@ export type Database = {
       loads: {
         Row: {
           assigned_driver_id: string | null
+          contact_phone: string | null
           created_at: string
           description: string | null
           drop_city: string
@@ -34,6 +35,7 @@ export type Database = {
         }
         Insert: {
           assigned_driver_id?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           drop_city: string
@@ -51,6 +53,7 @@ export type Database = {
         }
         Update: {
           assigned_driver_id?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           drop_city?: string
