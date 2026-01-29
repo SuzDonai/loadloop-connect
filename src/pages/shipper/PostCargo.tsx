@@ -90,6 +90,7 @@ const PostCargo = () => {
     pickupTime: "",
     description: "",
     price: "",
+    contactPhone: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [originOpen, setOriginOpen] = useState(false);
@@ -132,6 +133,7 @@ const PostCargo = () => {
       pickup_time: formData.pickupTime,
       description: formData.description || null,
       price: priceValue,
+      contact_phone: formData.contactPhone || null,
       status: "open",
     });
 
@@ -329,6 +331,23 @@ const PostCargo = () => {
                 className="h-12"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contactPhone">Contact Phone Number</Label>
+              <Input
+                id="contactPhone"
+                name="contactPhone"
+                type="tel"
+                placeholder="e.g., +91 9876543210"
+                value={formData.contactPhone}
+                onChange={handleChange}
+                className="h-12"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                This number will be shared with the driver once they accept the load
+              </p>
             </div>
 
             <div className="space-y-2">
