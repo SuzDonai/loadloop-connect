@@ -47,9 +47,9 @@ const HeroSection = () => {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 pt-8 border-t border-border">
               {[
-                { value: "40%", label: "Cost Savings" },
-                { value: "1.2M", label: "Tons CO₂ Saved" },
-                { value: "10K+", label: "Active Users" },
+                { value: "0%", label: "Cost Savings" },
+                { value: "0", label: "Tons CO₂ Saved" },
+                { value: "0", label: "Active Users" },
               ].map((stat, index) => (
                 <div key={index} className="text-center sm:text-left">
                   <div className="text-2xl md:text-3xl font-display font-bold text-foreground">
@@ -72,7 +72,7 @@ const HeroSection = () => {
                   </div>
                   <div>
                     <h3 className="font-display font-semibold text-lg">Smart Match Found</h3>
-                    <p className="text-sm text-muted-foreground">98% compatibility score</p>
+                    <p className="text-sm text-muted-foreground">0% compatibility score</p>
                   </div>
                 </div>
 
@@ -96,14 +96,14 @@ const HeroSection = () => {
                       <TrendingDown className="w-4 h-4" />
                       <span className="text-xs font-medium">Cost Saved</span>
                     </div>
-                    <span className="text-xl font-display font-bold">₹18,500</span>
+                    <span className="text-xl font-display font-bold">₹0</span>
                   </div>
                   <div className="bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 text-secondary mb-1">
                       <Leaf className="w-4 h-4" />
                       <span className="text-xs font-medium">CO₂ Saved</span>
                     </div>
-                    <span className="text-xl font-display font-bold">1.2 tons</span>
+                    <span className="text-xl font-display font-bold">0 tons</span>
                   </div>
                 </div>
               </div>
