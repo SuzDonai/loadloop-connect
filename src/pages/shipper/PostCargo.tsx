@@ -118,94 +118,18 @@ const PostCargo = () => {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Pickup Location</Label>
-                <Popover open={originOpen} onOpenChange={setOriginOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={originOpen}
-                      className="w-full h-12 justify-between font-normal"
-                    >
-                      {formData.origin || "Select pickup city..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search city..." />
-                      <CommandList>
-                        <CommandEmpty>No city found.</CommandEmpty>
-                        <CommandGroup>
-                          {maharashtraCities.map((city) => (
-                            <CommandItem
-                              key={city}
-                              value={city}
-                              onSelect={(currentValue) => {
-                                setFormData({ ...formData, origin: currentValue });
-                                setOriginOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.origin === city ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {city}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label>Delivery Location</Label>
-                <Popover open={destinationOpen} onOpenChange={setDestinationOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={destinationOpen}
-                      className="w-full h-12 justify-between font-normal"
-                    >
-                      {formData.destination || "Select delivery city..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search city..." />
-                      <CommandList>
-                        <CommandEmpty>No city found.</CommandEmpty>
-                        <CommandGroup>
-                          {maharashtraCities.map((city) => (
-                            <CommandItem
-                              key={city}
-                              value={city}
-                              onSelect={(currentValue) => {
-                                setFormData({ ...formData, destination: currentValue });
-                                setDestinationOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.destination === city ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {city}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <MapboxLocationPicker
+                value={formData.origin}
+                onChange={(location) => setFormData({ ...formData, origin: location })}
+                placeholder="Search pickup location..."
+                label="Pickup Location"
+              />
+              <MapboxLocationPicker
+                value={formData.destination}
+                onChange={(location) => setFormData({ ...formData, destination: location })}
+                placeholder="Search drop location..."
+                label="Drop Location"
+              />
             </div>
           </div>
 
