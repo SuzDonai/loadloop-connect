@@ -118,13 +118,13 @@ const PostCargo = () => {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <MapboxLocationPicker
+              <LocationPicker
                 value={formData.origin}
                 onChange={(location) => setFormData({ ...formData, origin: location })}
                 placeholder="Search pickup location..."
                 label="Pickup Location"
               />
-              <MapboxLocationPicker
+              <LocationPicker
                 value={formData.destination}
                 onChange={(location) => setFormData({ ...formData, destination: location })}
                 placeholder="Search drop location..."
