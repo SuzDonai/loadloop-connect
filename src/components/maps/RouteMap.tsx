@@ -1,9 +1,20 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// Fix default marker icons
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 interface RouteMapProps {
   pickupCity: string;
@@ -11,184 +22,125 @@ interface RouteMapProps {
   className?: string;
 }
 
-const MAHARASHTRA_CENTER: [number, number] = [76.7, 19.0];
+const geocode = async (query: string): Promise<[number, number] | null> => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=1`
+    );
+    const data = await res.json();
+    if (data.length > 0) {
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+  } catch (err) {
+    console.error('Geocode failed:', err);
+  }
+  return null;
+};
 
 const RouteMap: React.FC<RouteMapProps> = ({ pickupCity, dropCity, className = "" }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchToken = useCallback(async () => {
+  const setupMap = async () => {
+    if (!mapContainer.current) return;
     setLoading(true);
     setError(null);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setError('Please log in to view the map');
+      const [pickupCoords, dropCoords] = await Promise.all([
+        geocode(pickupCity),
+        geocode(dropCity),
+      ]);
+
+      if (!pickupCoords || !dropCoords) {
+        setError('Could not find one or both locations');
+        setLoading(false);
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+      // Clean up existing map
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+
+      const map = L.map(mapContainer.current, {
+        center: [19.0, 76.7],
+        zoom: 6,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      // Add markers
+      const pickupIcon = L.icon({
+        iconUrl: markerIcon,
+        iconRetinaUrl: markerIcon2x,
+        shadowUrl: markerShadow,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+      });
+
+      L.marker(pickupCoords, { icon: pickupIcon })
+        .bindPopup(`<strong>Pickup:</strong><br/>${pickupCity}`)
+        .addTo(map);
+
+      L.marker(dropCoords, { icon: pickupIcon })
+        .bindPopup(`<strong>Drop:</strong><br/>${dropCity}`)
+        .addTo(map);
+
+      // Fetch route from OSRM
+      try {
+        const routeRes = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropCoords[1]},${dropCoords[0]}?overview=full&geometries=geojson`
+        );
+        const routeData = await routeRes.json();
+
+        if (routeData.routes?.length) {
+          const coords = routeData.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]] as L.LatLngExpression
+          );
+          L.polyline(coords, {
+            color: '#3b82f6',
+            weight: 4,
+            opacity: 0.75,
+          }).addTo(map);
         }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch map token');
+      } catch {
+        // If routing fails, draw a straight line
+        L.polyline([pickupCoords, dropCoords], {
+          color: '#3b82f6',
+          weight: 3,
+          opacity: 0.6,
+          dashArray: '10, 10',
+        }).addTo(map);
       }
 
-      const data = await response.json();
-      if (data.token) {
-        setMapboxToken(data.token);
-      } else {
-        throw new Error('No token received');
-      }
+      // Fit bounds
+      const bounds = L.latLngBounds(pickupCoords, dropCoords);
+      map.fitBounds(bounds, { padding: [50, 50] });
+
+      mapRef.current = map;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load map');
+      setError('Failed to load map');
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchToken();
-  }, [fetchToken]);
-
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: MAHARASHTRA_CENTER,
-      zoom: 6,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    // Geocode both cities and add markers
-    const geocodeAndAddMarkers = async () => {
-      try {
-        // Geocode pickup
-        const pickupRes = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(pickupCity)}.json?access_token=${mapboxToken}&country=IN&limit=1`
-        );
-        const pickupData = await pickupRes.json();
-        
-        // Geocode drop
-        const dropRes = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(dropCity)}.json?access_token=${mapboxToken}&country=IN&limit=1`
-        );
-        const dropData = await dropRes.json();
-
-        if (pickupData.features?.length && dropData.features?.length && map.current) {
-          const pickupCoords = pickupData.features[0].center as [number, number];
-          const dropCoords = dropData.features[0].center as [number, number];
-
-          // Add pickup marker (green)
-          new mapboxgl.Marker({ color: '#10b981' })
-            .setLngLat(pickupCoords)
-            .setPopup(new mapboxgl.Popup().setHTML(`<strong>Pickup:</strong><br/>${pickupCity}`))
-            .addTo(map.current);
-
-          // Add drop marker (blue)
-          new mapboxgl.Marker({ color: '#3b82f6' })
-            .setLngLat(dropCoords)
-            .setPopup(new mapboxgl.Popup().setHTML(`<strong>Drop:</strong><br/>${dropCity}`))
-            .addTo(map.current);
-
-          // Fetch route
-          const routeRes = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupCoords[0]},${pickupCoords[1]};${dropCoords[0]},${dropCoords[1]}?geometries=geojson&access_token=${mapboxToken}`
-          );
-          const routeData = await routeRes.json();
-
-          if (routeData.routes?.length && map.current) {
-            const route = routeData.routes[0].geometry;
-
-            map.current.on('load', () => {
-              if (!map.current) return;
-              
-              map.current.addSource('route', {
-                type: 'geojson',
-                data: {
-                  type: 'Feature',
-                  properties: {},
-                  geometry: route,
-                },
-              });
-
-              map.current.addLayer({
-                id: 'route',
-                type: 'line',
-                source: 'route',
-                layout: {
-                  'line-join': 'round',
-                  'line-cap': 'round',
-                },
-                paint: {
-                  'line-color': '#3b82f6',
-                  'line-width': 4,
-                  'line-opacity': 0.75,
-                },
-              });
-            });
-
-            // If map is already loaded
-            if (map.current.isStyleLoaded()) {
-              if (!map.current.getSource('route')) {
-                map.current.addSource('route', {
-                  type: 'geojson',
-                  data: {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: route,
-                  },
-                });
-
-                map.current.addLayer({
-                  id: 'route',
-                  type: 'line',
-                  source: 'route',
-                  layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round',
-                  },
-                  paint: {
-                    'line-color': '#3b82f6',
-                    'line-width': 4,
-                    'line-opacity': 0.75,
-                  },
-                });
-              }
-            }
-          }
-
-          // Fit bounds to show both points
-          const bounds = new mapboxgl.LngLatBounds();
-          bounds.extend(pickupCoords);
-          bounds.extend(dropCoords);
-          map.current.fitBounds(bounds, { padding: 50 });
-        }
-      } catch (err) {
-        console.error('Failed to geocode locations:', err);
+    setupMap();
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
-
-    geocodeAndAddMarkers();
-
-    return () => {
-      map.current?.remove();
-    };
-  }, [mapboxToken, pickupCity, dropCity]);
+  }, [pickupCity, dropCity]);
 
   if (loading) {
     return (
@@ -204,7 +156,7 @@ const RouteMap: React.FC<RouteMapProps> = ({ pickupCity, dropCity, className = "
       <div className={`flex flex-col items-center justify-center bg-muted rounded-xl gap-2 ${className}`} style={{ minHeight: '200px' }}>
         <AlertCircle className="w-8 h-8 text-destructive" />
         <span className="text-sm text-muted-foreground">{error}</span>
-        <Button variant="outline" size="sm" onClick={fetchToken}>
+        <Button variant="outline" size="sm" onClick={setupMap}>
           Retry
         </Button>
       </div>

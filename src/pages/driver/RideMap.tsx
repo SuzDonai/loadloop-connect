@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
-  MapPin, 
   Navigation, 
   Package, 
   Clock, 
@@ -19,17 +18,43 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+// Fix default marker icons
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIconImg from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIconImg,
+  shadowUrl: markerShadow,
+});
+
+const geocode = async (query: string): Promise<[number, number] | null> => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=1`
+    );
+    const data = await res.json();
+    if (data.length > 0) {
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+  } catch (err) {
+    console.error('Geocode failed:', err);
+  }
+  return null;
+};
+
 const RideMap = () => {
   const { loadId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   
   const [load, setLoad] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
-  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
   const [completing, setCompleting] = useState(false);
 
@@ -57,192 +82,130 @@ const RideMap = () => {
     fetchLoad();
   }, [loadId, user, navigate]);
 
-  // Fetch Mapbox token
-  const fetchToken = useCallback(async () => {
-    setTokenError(null);
+  // Initialize map with route
+  const setupMap = useCallback(async () => {
+    if (!mapContainer.current || !load) return;
+    setMapError(null);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setTokenError('Please log in to view the map');
+      const [pickupCoords, dropCoords] = await Promise.all([
+        geocode(load.pickup_city),
+        geocode(load.drop_city),
+      ]);
+
+      if (!pickupCoords || !dropCoords) {
+        setMapError('Could not find one or both locations');
+        setLoading(false);
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-mapbox-token`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch map token');
-
-      const data = await response.json();
-      if (data.token) {
-        setMapboxToken(data.token);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
+
+      const map = L.map(mapContainer.current, {
+        center: [19.0, 76.7],
+        zoom: 6,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+
+      // Pickup marker (green)
+      const pickupMarkerIcon = L.divIcon({
+        html: `<div style="width:32px;height:32px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      L.marker(pickupCoords, { icon: pickupMarkerIcon })
+        .bindPopup(`<strong style="color:#10b981">Pickup</strong><br/>${load.pickup_city}`)
+        .addTo(map);
+
+      // Drop marker (blue)
+      const dropMarkerIcon = L.divIcon({
+        html: `<div style="width:32px;height:32px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      L.marker(dropCoords, { icon: dropMarkerIcon })
+        .bindPopup(`<strong style="color:#3b82f6">Drop</strong><br/>${load.drop_city}`)
+        .addTo(map);
+
+      // Get route from OSRM
+      try {
+        const routeRes = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropCoords[1]},${dropCoords[0]}?overview=full&geometries=geojson`
+        );
+        const routeData = await routeRes.json();
+
+        if (routeData.routes?.length) {
+          const route = routeData.routes[0];
+          const distanceKm = (route.distance / 1000).toFixed(1);
+          const durationHrs = Math.floor(route.duration / 3600);
+          const durationMins = Math.floor((route.duration % 3600) / 60);
+
+          setRouteInfo({
+            distance: `${distanceKm} km`,
+            duration: durationHrs > 0 ? `${durationHrs}h ${durationMins}m` : `${durationMins} min`,
+          });
+
+          const coords = route.geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]] as L.LatLngExpression
+          );
+
+          // Route background
+          L.polyline(coords, {
+            color: '#1e40af',
+            weight: 8,
+            opacity: 0.4,
+          }).addTo(map);
+
+          // Route foreground
+          L.polyline(coords, {
+            color: '#3b82f6',
+            weight: 5,
+          }).addTo(map);
+        }
+      } catch {
+        L.polyline([pickupCoords, dropCoords], {
+          color: '#3b82f6',
+          weight: 3,
+          opacity: 0.6,
+          dashArray: '10, 10',
+        }).addTo(map);
+      }
+
+      // Fit bounds
+      const bounds = L.latLngBounds(pickupCoords, dropCoords);
+      map.fitBounds(bounds, { padding: [80, 80] });
+
+      mapRef.current = map;
     } catch (err) {
-      setTokenError('Failed to load map');
+      setMapError('Failed to load map');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [load]);
 
   useEffect(() => {
-    fetchToken();
-  }, [fetchToken]);
-
-  // Initialize map with route
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken || !load) return;
-
-    mapboxgl.accessToken = mapboxToken;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/navigation-night-v1',
-      center: [76.7, 19.0],
-      zoom: 6,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.current.addControl(new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true,
-      showUserHeading: true,
-    }), 'top-right');
-
-    const setupRoute = async () => {
-      try {
-        // Geocode pickup
-        const pickupRes = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(load.pickup_city)}.json?access_token=${mapboxToken}&country=IN&limit=1`
-        );
-        const pickupData = await pickupRes.json();
-
-        // Geocode drop
-        const dropRes = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(load.drop_city)}.json?access_token=${mapboxToken}&country=IN&limit=1`
-        );
-        const dropData = await dropRes.json();
-
-        if (pickupData.features?.length && dropData.features?.length && map.current) {
-          const pickupCoords = pickupData.features[0].center as [number, number];
-          const dropCoords = dropData.features[0].center as [number, number];
-
-          // Add pickup marker
-          const pickupEl = document.createElement('div');
-          pickupEl.className = 'pickup-marker';
-          pickupEl.innerHTML = `<div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>`;
-          
-          new mapboxgl.Marker(pickupEl)
-            .setLngLat(pickupCoords)
-            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong class="text-emerald-600">Pickup</strong><br/>${load.pickup_city}`))
-            .addTo(map.current);
-
-          // Add drop marker
-          const dropEl = document.createElement('div');
-          dropEl.className = 'drop-marker';
-          dropEl.innerHTML = `<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          </div>`;
-
-          new mapboxgl.Marker(dropEl)
-            .setLngLat(dropCoords)
-            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`<strong class="text-blue-600">Drop</strong><br/>${load.drop_city}`))
-            .addTo(map.current);
-
-          // Get directions
-          const routeRes = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupCoords[0]},${pickupCoords[1]};${dropCoords[0]},${dropCoords[1]}?geometries=geojson&overview=full&access_token=${mapboxToken}`
-          );
-          const routeData = await routeRes.json();
-
-          if (routeData.routes?.length && map.current) {
-            const route = routeData.routes[0];
-            const distanceKm = (route.distance / 1000).toFixed(1);
-            const durationHrs = Math.floor(route.duration / 3600);
-            const durationMins = Math.floor((route.duration % 3600) / 60);
-
-            setRouteInfo({
-              distance: `${distanceKm} km`,
-              duration: durationHrs > 0 ? `${durationHrs}h ${durationMins}m` : `${durationMins} min`,
-            });
-
-            map.current.on('load', () => {
-              if (!map.current) return;
-
-              map.current.addSource('route', {
-                type: 'geojson',
-                data: {
-                  type: 'Feature',
-                  properties: {},
-                  geometry: route.geometry,
-                },
-              });
-
-              map.current.addLayer({
-                id: 'route-bg',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#1e40af', 'line-width': 8, 'line-opacity': 0.4 },
-              });
-
-              map.current.addLayer({
-                id: 'route',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#3b82f6', 'line-width': 5 },
-              });
-            });
-
-            // If already loaded
-            if (map.current.isStyleLoaded() && !map.current.getSource('route')) {
-              map.current.addSource('route', {
-                type: 'geojson',
-                data: { type: 'Feature', properties: {}, geometry: route.geometry },
-              });
-
-              map.current.addLayer({
-                id: 'route-bg',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#1e40af', 'line-width': 8, 'line-opacity': 0.4 },
-              });
-
-              map.current.addLayer({
-                id: 'route',
-                type: 'line',
-                source: 'route',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: { 'line-color': '#3b82f6', 'line-width': 5 },
-              });
-            }
-          }
-
-          // Fit bounds
-          const bounds = new mapboxgl.LngLatBounds();
-          bounds.extend(pickupCoords);
-          bounds.extend(dropCoords);
-          map.current.fitBounds(bounds, { padding: 80 });
-        }
-      } catch (err) {
-        console.error('Failed to setup route:', err);
+    if (load) setupMap();
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
-
-    setupRoute();
-
-    return () => {
-      map.current?.remove();
-    };
-  }, [mapboxToken, load]);
+  }, [load, setupMap]);
 
   const handleCompleteRide = async () => {
     if (!loadId) return;
@@ -274,12 +237,12 @@ const RideMap = () => {
     );
   }
 
-  if (tokenError) {
+  if (mapError) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <AlertCircle className="w-12 h-12 text-destructive" />
-        <p className="text-muted-foreground">{tokenError}</p>
-        <Button onClick={fetchToken}>Retry</Button>
+        <p className="text-muted-foreground">{mapError}</p>
+        <Button onClick={setupMap}>Retry</Button>
       </div>
     );
   }
@@ -287,10 +250,10 @@ const RideMap = () => {
   return (
     <div className="min-h-screen bg-background relative">
       {/* Full screen map */}
-      <div ref={mapContainer} className="absolute inset-0" />
+      <div ref={mapContainer} className="absolute inset-0 z-0" />
 
       {/* Back button */}
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-4 left-4 z-[1000]">
         <Button
           variant="secondary"
           size="icon"
@@ -303,7 +266,7 @@ const RideMap = () => {
 
       {/* Route info card */}
       {routeInfo && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-card/95 backdrop-blur rounded-xl shadow-lg px-6 py-3 flex items-center gap-6">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-card/95 backdrop-blur rounded-xl shadow-lg px-6 py-3 flex items-center gap-6">
           <div className="flex items-center gap-2">
             <Navigation className="w-5 h-5 text-primary" />
             <span className="font-semibold">{routeInfo.distance}</span>
@@ -317,9 +280,8 @@ const RideMap = () => {
       )}
 
       {/* Bottom card */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-card/95 backdrop-blur-lg border-t border-border rounded-t-3xl shadow-2xl">
+      <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-card/95 backdrop-blur-lg border-t border-border rounded-t-3xl shadow-2xl">
         <div className="p-6 space-y-4">
-          {/* Route summary */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -338,7 +300,6 @@ const RideMap = () => {
             </div>
           </div>
 
-          {/* Load details */}
           <div className="flex flex-wrap gap-3 text-sm">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full">
               <Package className="w-4 h-4" />
@@ -350,7 +311,6 @@ const RideMap = () => {
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-2">
             <Button 
               variant="outline" 
