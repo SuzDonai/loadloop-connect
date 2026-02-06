@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import MapboxLocationPicker from "@/components/maps/MapboxLocationPicker";
+import LocationPicker from "@/components/maps/LocationPicker";
 
 const vehicleTypes = [
   "Open Truck",
