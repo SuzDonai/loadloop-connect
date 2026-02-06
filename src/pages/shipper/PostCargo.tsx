@@ -25,45 +25,6 @@ const vehicleTypes = [
   "Tanker",
 ];
 
-const maharashtraCities = [
-  "Ahilyanagar",
-  "Akola",
-  "Amravati",
-  "Chhatrapati Sambhajinagar",
-  "Beed",
-  "Bhandara",
-  "Buldhana",
-  "Chandrapur",
-  "Dhule",
-  "Gadchiroli",
-  "Gondia",
-  "Hingoli",
-  "Jalgaon",
-  "Jalna",
-  "Kolhapur",
-  "Latur",
-  "Mumbai City",
-  "Mumbai Suburban",
-  "Nagpur",
-  "Nanded",
-  "Nandurbar",
-  "Nashik",
-  "Dharashiv",
-  "Palghar",
-  "Parbhani",
-  "Pune",
-  "Raigad",
-  "Ratnagiri",
-  "Sangli",
-  "Satara",
-  "Sindhudurg",
-  "Solapur",
-  "Thane",
-  "Wardha",
-  "Washim",
-  "Yavatmal",
-];
-
 const PostCargo = () => {
   const [formData, setFormData] = useState({
     origin: "",
@@ -78,8 +39,6 @@ const PostCargo = () => {
     contactPhone: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [originOpen, setOriginOpen] = useState(false);
-  const [destinationOpen, setDestinationOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
