@@ -19,11 +19,19 @@ export type Database = {
           assigned_driver_id: string | null
           contact_phone: string | null
           created_at: string
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_lat: number | null
+          delivery_lon: number | null
           description: string | null
+          distance_km: number | null
           drop_city: string
           id: string
+          pickup_address: string | null
           pickup_city: string
           pickup_date: string
+          pickup_lat: number | null
+          pickup_lon: number | null
           pickup_time: string
           price: number | null
           shipper_id: string
@@ -37,11 +45,19 @@ export type Database = {
           assigned_driver_id?: string | null
           contact_phone?: string | null
           created_at?: string
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_lat?: number | null
+          delivery_lon?: number | null
           description?: string | null
+          distance_km?: number | null
           drop_city: string
           id?: string
+          pickup_address?: string | null
           pickup_city: string
           pickup_date: string
+          pickup_lat?: number | null
+          pickup_lon?: number | null
           pickup_time: string
           price?: number | null
           shipper_id: string
@@ -55,11 +71,19 @@ export type Database = {
           assigned_driver_id?: string | null
           contact_phone?: string | null
           created_at?: string
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_lat?: number | null
+          delivery_lon?: number | null
           description?: string | null
+          distance_km?: number | null
           drop_city?: string
           id?: string
+          pickup_address?: string | null
           pickup_city?: string
           pickup_date?: string
+          pickup_lat?: number | null
+          pickup_lon?: number | null
           pickup_time?: string
           price?: number | null
           shipper_id?: string
@@ -78,9 +102,13 @@ export type Database = {
           current_lon: number | null
           email: string
           id: string
+          is_available: boolean | null
+          last_location_update: string | null
           name: string
           phone: string | null
           role: Database["public"]["Enums"]["app_role"]
+          truck_capacity: number | null
+          truck_type: string | null
           updated_at: string | null
         }
         Insert: {
@@ -89,9 +117,13 @@ export type Database = {
           current_lon?: number | null
           email: string
           id: string
+          is_available?: boolean | null
+          last_location_update?: string | null
           name: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          truck_capacity?: number | null
+          truck_type?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -100,9 +132,13 @@ export type Database = {
           current_lon?: number | null
           email?: string
           id?: string
+          is_available?: boolean | null
+          last_location_update?: string | null
           name?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          truck_capacity?: number | null
+          truck_type?: string | null
           updated_at?: string | null
         }
         Relationships: []
