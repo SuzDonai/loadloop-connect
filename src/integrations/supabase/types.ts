@@ -74,6 +74,8 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          current_lat: number | null
+          current_lon: number | null
           email: string
           id: string
           name: string
@@ -83,6 +85,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          current_lat?: number | null
+          current_lon?: number | null
           email: string
           id: string
           name: string
@@ -92,6 +96,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          current_lat?: number | null
+          current_lon?: number | null
           email?: string
           id?: string
           name?: string
