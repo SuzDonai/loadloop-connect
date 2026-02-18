@@ -16,24 +16,34 @@ export type Database = {
     Tables: {
       loads: {
         Row: {
+          assigned_at: string | null
           assigned_driver_id: string | null
+          cargo_type: string | null
+          completed_at: string | null
           contact_phone: string | null
           created_at: string
+          currency: string | null
           delivery_address: string | null
           delivery_city: string | null
+          delivery_deadline: string | null
           delivery_lat: number | null
           delivery_lon: number | null
           description: string | null
+          dimensions: string | null
           distance_km: number | null
           drop_city: string
           id: string
+          is_featured: boolean | null
+          min_capacity: number | null
           pickup_address: string | null
           pickup_city: string
           pickup_date: string
+          pickup_deadline: string | null
           pickup_lat: number | null
           pickup_lon: number | null
           pickup_time: string
           price: number | null
+          required_truck_type: string | null
           shipper_id: string
           status: string
           updated_at: string
@@ -42,24 +52,34 @@ export type Database = {
           weight: number
         }
         Insert: {
+          assigned_at?: string | null
           assigned_driver_id?: string | null
+          cargo_type?: string | null
+          completed_at?: string | null
           contact_phone?: string | null
           created_at?: string
+          currency?: string | null
           delivery_address?: string | null
           delivery_city?: string | null
+          delivery_deadline?: string | null
           delivery_lat?: number | null
           delivery_lon?: number | null
           description?: string | null
+          dimensions?: string | null
           distance_km?: number | null
           drop_city: string
           id?: string
+          is_featured?: boolean | null
+          min_capacity?: number | null
           pickup_address?: string | null
           pickup_city: string
           pickup_date: string
+          pickup_deadline?: string | null
           pickup_lat?: number | null
           pickup_lon?: number | null
           pickup_time: string
           price?: number | null
+          required_truck_type?: string | null
           shipper_id: string
           status?: string
           updated_at?: string
@@ -68,24 +88,34 @@ export type Database = {
           weight: number
         }
         Update: {
+          assigned_at?: string | null
           assigned_driver_id?: string | null
+          cargo_type?: string | null
+          completed_at?: string | null
           contact_phone?: string | null
           created_at?: string
+          currency?: string | null
           delivery_address?: string | null
           delivery_city?: string | null
+          delivery_deadline?: string | null
           delivery_lat?: number | null
           delivery_lon?: number | null
           description?: string | null
+          dimensions?: string | null
           distance_km?: number | null
           drop_city?: string
           id?: string
+          is_featured?: boolean | null
+          min_capacity?: number | null
           pickup_address?: string | null
           pickup_city?: string
           pickup_date?: string
+          pickup_deadline?: string | null
           pickup_lat?: number | null
           pickup_lon?: number | null
           pickup_time?: string
           price?: number | null
+          required_truck_type?: string | null
           shipper_id?: string
           status?: string
           updated_at?: string
