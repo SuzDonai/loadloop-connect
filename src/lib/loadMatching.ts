@@ -15,6 +15,12 @@ export interface Load {
   pickup_time: string;
   description?: string | null;
   created_at: string;
+  cargo_type?: string | null;
+  dimensions?: string | null;
+  currency?: string | null;
+  required_truck_type?: string | null;
+  min_capacity?: number | null;
+  is_featured?: boolean | null;
 }
 
 export interface ScoredLoad extends Load {
@@ -54,24 +60,13 @@ export function rankLoads(
           ? haversineDistance(driverLat, driverLon, pickupLat, pickupLon)
           : 9999;
 
-      // Distance score: closer = higher (max 40 points)
-      const distScore = Math.max(0, 40 - distanceFromDriver * 0.4);
+      // 70% weight on proximity: closer = higher score
+      const distanceScore = (100 / (distanceFromDriver + 1)) * 0.7;
 
-      // Price score: higher price = better (max 30 points)
-      const priceScore = ((load.price ?? 0) / maxPrice) * 30;
+      // 30% weight on price: higher-paying = better
+      const priceScore = (((load.price ?? 0) / maxPrice) * 100) * 0.3;
 
-      // Recency score: newer = better (max 15 points)
-      const ageHours = (Date.now() - new Date(load.created_at).getTime()) / 3600000;
-      const recencyScore = Math.max(0, 15 - ageHours * 0.5);
-
-      // Route efficiency: if distance_km exists, prefer shorter pickups relative to route (max 15 points)
-      let efficiencyScore = 7.5;
-      if (load.distance_km && load.distance_km > 0) {
-        const ratio = distanceFromDriver / load.distance_km;
-        efficiencyScore = Math.max(0, 15 - ratio * 15);
-      }
-
-      const score = Math.round(distScore + priceScore + recencyScore + efficiencyScore);
+      const score = Math.round(distanceScore + priceScore);
 
       return { ...load, score, distanceFromDriver: Math.round(distanceFromDriver) };
     })
