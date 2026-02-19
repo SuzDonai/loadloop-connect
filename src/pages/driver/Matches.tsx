@@ -10,8 +10,11 @@ import {
   Navigation,
   Square,
   Phone,
-  User
+  User,
+  Star,
 } from "lucide-react";
+import { useDriverLocation } from "@/hooks/useDriverLocation";
+import { rankLoads, type ScoredLoad } from "@/lib/loadMatching";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +40,7 @@ const DriverMatches = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { location } = useDriverLocation();
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [confirmAcceptId, setConfirmAcceptId] = useState<string | null>(null);
   const [endingTripId, setEndingTripId] = useState<string | null>(null);
@@ -142,6 +146,11 @@ const DriverMatches = () => {
     }
   };
 
+  // Score and rank available loads by driver location
+  const scoredLoads: ScoredLoad[] = location && availableLoads.length > 0
+    ? rankLoads(availableLoads as any, location.lat, location.lon)
+    : (availableLoads as any[]).map((l) => ({ ...l, score: 0, distanceFromDriver: 0 }));
+
   const isLoading = activeTab === "available" ? loadingAvailable : loadingAccepted;
   const loads = activeTab === "available" ? availableLoads : acceptedLoads;
 
@@ -194,7 +203,7 @@ const DriverMatches = () => {
                     </div>
                   </div>
                 ))
-              ) : availableLoads.length === 0 ? (
+              ) : scoredLoads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center bg-card rounded-2xl border">
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <Truck className="w-8 h-8 text-muted-foreground" />
@@ -205,10 +214,16 @@ const DriverMatches = () => {
                   </p>
                 </div>
               ) : (
-                availableLoads.map((load) => (
+                scoredLoads.map((load, index) => {
+                  const isFeatured = index === 0 && load.score > 0;
+                  return (
                   <div
                     key={load.id}
-                    className="bg-card rounded-2xl border border-border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
+                    className={`rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${
+                      isFeatured
+                        ? "bg-gradient-to-br from-primary/10 via-card to-accent/10 border-2 border-primary/40 ring-1 ring-primary/20"
+                        : "bg-card border border-border"
+                    }`}
                   >
                     <div className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-center gap-6">
@@ -219,9 +234,16 @@ const DriverMatches = () => {
                                 <span className="font-display font-semibold text-lg">
                                   {load.pickup_city} → {load.drop_city}
                                 </span>
-                                <div className="px-2 py-1 bg-emerald-500/10 text-emerald-600 rounded-full text-xs font-medium">
-                                  Open
-                                </div>
+                                {isFeatured ? (
+                                  <div className="flex items-center gap-1 px-2.5 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold shadow-sm">
+                                    <Star className="w-3 h-3" />
+                                    Best Match
+                                  </div>
+                                ) : (
+                                  <div className="px-2 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-medium">
+                                    Open
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -247,6 +269,17 @@ const DriverMatches = () => {
                               <MapPin className="w-4 h-4" />
                               {load.vehicle_type}
                             </div>
+                            {load.distanceFromDriver > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Navigation className="w-4 h-4" />
+                                {load.distanceFromDriver} km away
+                              </div>
+                            )}
+                            {load.score > 0 && (
+                              <div className="px-2 py-1 bg-accent/10 text-accent-foreground rounded text-xs font-semibold">
+                                Score: {load.score}
+                              </div>
+                            )}
                             <div className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-semibold">
                               ₹{(load.price || 0).toLocaleString("en-IN")}
                             </div>
@@ -257,6 +290,7 @@ const DriverMatches = () => {
                           <Button 
                             onClick={() => setConfirmAcceptId(load.id)}
                             disabled={acceptingId === load.id}
+                            variant={isFeatured ? "default" : "outline"}
                           >
                             {acceptingId === load.id ? (
                               <>
@@ -265,7 +299,7 @@ const DriverMatches = () => {
                               </>
                             ) : (
                               <>
-                                Accept Load
+                                {isFeatured ? "Claim This Load" : "Accept Load"}
                                 <ArrowUpRight className="w-4 h-4 ml-2" />
                               </>
                             )}
@@ -286,7 +320,8 @@ const DriverMatches = () => {
                       </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </TabsContent>
