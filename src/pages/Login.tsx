@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,19 +14,33 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, profile } = useAuth();
 
+  // Redirect when profile loads after login
+  useEffect(() => {
+    if (isSubmitting && profile) {
+      setIsSubmitting(false);
+      if (profile.role === "driver") {
+        navigate("/driver/matches");
+      } else if (profile.role === "shipper") {
+        navigate("/shipper/dashboard");
+      } else {
+        navigate("/");
+      }
+    }
+  }, [profile, isSubmitting, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      setIsLoading(false);
+      setIsSubmitting(false);
       toast({
         title: "Login failed",
         description: error.message,
@@ -40,17 +54,7 @@ const Login = () => {
       description: "You have successfully signed in.",
     });
 
-    // Small delay to allow profile to load, then redirect based on role
-    setTimeout(() => {
-      setIsLoading(false);
-      if (profile?.role === "driver") {
-        navigate("/driver/matches");
-      } else if (profile?.role === "shipper") {
-        navigate("/shipper/dashboard");
-      } else {
-        navigate("/");
-      }
-    }, 500);
+    // Profile will be fetched by AuthProvider, useEffect above handles redirect
   };
 
   return (
@@ -143,9 +147,9 @@ const Login = () => {
                 type="submit"
                 size="lg" 
                 className="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90" 
-                disabled={isLoading}
+                disabled={isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 ) : (
                   <>
@@ -261,9 +265,9 @@ const Login = () => {
                 type="submit"
                 size="lg" 
                 className="w-full bg-secondary-foreground text-secondary hover:bg-secondary-foreground/90" 
-                disabled={isLoading}
+                disabled={isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="w-5 h-5 border-2 border-secondary/30 border-t-secondary rounded-full animate-spin" />
                 ) : (
                   <>
