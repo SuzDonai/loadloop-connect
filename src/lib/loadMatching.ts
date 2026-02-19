@@ -60,15 +60,22 @@ export function rankLoads(
           ? haversineDistance(driverLat, driverLon, pickupLat, pickupLon)
           : 9999;
 
-      // 70% weight on proximity: closer = higher score
-      const distanceScore = (100 / (distanceFromDriver + 1)) * 0.7;
+      // 85% weight on proximity (closer = higher, +10 to avoid division by zero near 0)
+      const distanceScore = (100 / (distanceFromDriver + 10)) * 0.85;
 
-      // 30% weight on price: higher-paying = better
-      const priceScore = (((load.price ?? 0) / maxPrice) * 100) * 0.3;
+      // 15% weight on price, normalized to max price in list
+      const priceScore = (((load.price ?? 0) / maxPrice) * 100) * 0.15;
 
-      const score = Math.round(distanceScore + priceScore);
+      let score = distanceScore + priceScore;
 
-      return { ...load, score, distanceFromDriver: Math.round(distanceFromDriver) };
+      // Distance penalty
+      if (distanceFromDriver > 500) {
+        score *= 0.5;
+      } else if (distanceFromDriver > 200) {
+        score *= 0.7;
+      }
+
+      return { ...load, score: Math.round(score), distanceFromDriver: Math.round(distanceFromDriver) };
     })
     .sort((a, b) => b.score - a.score);
 }
