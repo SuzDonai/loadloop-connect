@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Loader2, AlertCircle, MapPin, Clock, Route, ChevronDown, ChevronUp, Navigation } from 'lucide-react';
+import { Loader2, AlertCircle, Clock, Route, ChevronDown, ChevronUp, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 // Fix default marker icons
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -26,6 +27,7 @@ interface RouteDetails {
   totalDistance: string;
   totalDuration: string;
   steps: RouteStep[];
+  source: 'mappls' | 'osrm';
 }
 
 interface RouteMapProps {
@@ -62,7 +64,6 @@ const formatDuration = (seconds: number): string => {
   return `${minutes} min`;
 };
 
-// Parse OSRM maneuver type into readable instruction
 const parseInstruction = (step: any): string => {
   const maneuver = step.maneuver;
   const name = step.name || 'unnamed road';
@@ -84,6 +85,26 @@ const parseInstruction = (step: any): string => {
     case 'exit roundabout': return `Exit roundabout onto ${name}`;
     default: return `Continue on ${name}`;
   }
+};
+
+// Fetch distance from Mappls via edge function
+const fetchMapplsDistance = async (
+  pickupLat: number, pickupLon: number,
+  dropLat: number, dropLon: number
+): Promise<{ distance: number; duration: number } | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('mappls-distance', {
+      body: { pickupLat, pickupLon, dropLat, dropLon },
+    });
+
+    if (error) throw error;
+    if (data?.distance != null && data?.duration != null) {
+      return { distance: data.distance, duration: data.duration };
+    }
+  } catch (err) {
+    console.warn('Mappls distance failed, falling back to OSRM:', err);
+  }
+  return null;
 };
 
 const RouteMap: React.FC<RouteMapProps> = ({ pickupCity, dropCity, className = "", showDetails = true }) => {
@@ -157,55 +178,71 @@ const RouteMap: React.FC<RouteMapProps> = ({ pickupCity, dropCity, className = "
         .bindPopup(`<strong>🏁 Drop:</strong><br/>${dropCity}`)
         .addTo(map);
 
-      // Fetch route from OSRM with steps
-      try {
-        const routeRes = await fetch(
+      // Fetch Mappls distance + OSRM route in parallel
+      const [mapplsResult, osrmResult] = await Promise.allSettled([
+        fetchMapplsDistance(pickupCoords[0], pickupCoords[1], dropCoords[0], dropCoords[1]),
+        fetch(
           `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropCoords[1]},${dropCoords[0]}?overview=full&geometries=geojson&steps=true`
+        ).then(r => r.json()),
+      ]);
+
+      // Draw route from OSRM (for polyline + steps)
+      let osrmSteps: RouteStep[] = [];
+      let osrmDistance = 0;
+      let osrmDuration = 0;
+
+      if (osrmResult.status === 'fulfilled' && osrmResult.value?.routes?.length) {
+        const route = osrmResult.value.routes[0];
+        const coords = route.geometry.coordinates.map(
+          (c: [number, number]) => [c[1], c[0]] as L.LatLngExpression
         );
-        const routeData = await routeRes.json();
+        L.polyline(coords, {
+          color: '#3b82f6',
+          weight: 5,
+          opacity: 0.85,
+        }).addTo(map);
 
-        if (routeData.routes?.length) {
-          const route = routeData.routes[0];
-          const coords = route.geometry.coordinates.map(
-            (c: [number, number]) => [c[1], c[0]] as L.LatLngExpression
-          );
-          L.polyline(coords, {
-            color: '#3b82f6',
-            weight: 5,
-            opacity: 0.85,
-          }).addTo(map);
+        osrmDistance = route.distance;
+        osrmDuration = route.duration;
 
-          // Extract route details
-          const totalDistance = route.distance;
-          const totalDuration = route.duration;
-          const steps: RouteStep[] = [];
-
-          for (const leg of route.legs) {
-            for (const step of leg.steps) {
-              if (step.distance > 50) { // Filter out very short steps
-                steps.push({
-                  instruction: parseInstruction(step),
-                  distance: formatDistance(step.distance),
-                  duration: formatDuration(step.duration),
-                });
-              }
+        for (const leg of route.legs) {
+          for (const step of leg.steps) {
+            if (step.distance > 50) {
+              osrmSteps.push({
+                instruction: parseInstruction(step),
+                distance: formatDistance(step.distance),
+                duration: formatDuration(step.duration),
+              });
             }
           }
-
-          setRouteDetails({
-            totalDistance: formatDistance(totalDistance),
-            totalDuration: formatDuration(totalDuration),
-            steps,
-          });
         }
-      } catch {
-        // If routing fails, draw a straight line
+      } else {
+        // Fallback: straight line
         L.polyline([pickupCoords, dropCoords], {
           color: '#3b82f6',
           weight: 3,
           opacity: 0.6,
           dashArray: '10, 10',
         }).addTo(map);
+      }
+
+      // Use Mappls for distance/duration if available, OSRM as fallback
+      const mapplsData = mapplsResult.status === 'fulfilled' ? mapplsResult.value : null;
+
+      if (mapplsData) {
+        setRouteDetails({
+          totalDistance: formatDistance(mapplsData.distance),
+          totalDuration: formatDuration(mapplsData.duration),
+          steps: osrmSteps,
+          source: 'mappls',
+        });
+      } else if (osrmDistance > 0) {
+        setRouteDetails({
+          totalDistance: formatDistance(osrmDistance),
+          totalDuration: formatDuration(osrmDuration),
+          steps: osrmSteps,
+          source: 'osrm',
+        });
       }
 
       // Fit bounds
@@ -292,7 +329,12 @@ const RouteMap: React.FC<RouteMapProps> = ({ pickupCity, dropCity, className = "
                 <p className="font-semibold text-sm">{routeDetails.steps.length}</p>
               </div>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {routeDetails.source === 'mappls' && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-secondary/10 text-secondary rounded font-medium">
+                  Mappls
+                </span>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
