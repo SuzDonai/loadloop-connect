@@ -2,3 +2,6 @@ project_id = "febohmzpuvtrzshabvgj"
 
 [functions.get-mapbox-token]
 verify_jwt = false
+
+[functions.mappls-distance]
+verify_jwt = false
