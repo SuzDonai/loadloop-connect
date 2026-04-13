@@ -136,6 +136,37 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   }, []);
 
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&countrycodes=in&zoom=10`
+          );
+          const data = await res.json();
+          if (data.display_name) {
+            setSearchQuery(data.display_name);
+            onChange(data.display_name, { lat, lng });
+            if (mapRef.current) {
+              updateMarker(lat, lng, mapRef.current);
+            }
+          }
+        } catch (err) {
+          console.error('Reverse geocode failed:', err);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => setIsLocating(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [onChange]);
+
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
