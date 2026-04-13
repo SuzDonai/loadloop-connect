@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Weight, IndianRupee, Truck, Trash2, Eye } from "lucide-react";
+import { MapPin, Weight, IndianRupee, Truck, Trash2, Eye, Route } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
 
