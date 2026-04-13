@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Weight, IndianRupee, Truck, Trash2, Eye } from "lucide-react";
+import { MapPin, Weight, IndianRupee, Truck, Trash2, Eye, Route } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { formatDistanceToNow } from "date-fns";
 
@@ -67,7 +67,7 @@ export function LoadCard({
         </div>
 
         {/* Details */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/50">
           <div className="flex items-center gap-2">
             <Weight className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">
@@ -82,6 +82,14 @@ export function LoadCard({
               </span>
             </span>
           </div>
+          {load.distance_km && (
+            <div className="flex items-center gap-2">
+              <Route className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm">
+                <span className="font-semibold">{load.distance_km}</span> km
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
 
