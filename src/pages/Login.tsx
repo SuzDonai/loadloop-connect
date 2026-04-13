@@ -15,23 +15,27 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [waitingForProfile, setWaitingForProfile] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn, profile } = useAuth();
+  const { signIn, profile, user } = useAuth();
 
-  // Redirect when profile loads after login
+  // Redirect when fresh profile loads after login
   useEffect(() => {
-    if (isSubmitting && profile) {
+    if (waitingForProfile && user && profile && profile.id === user.id) {
+      setWaitingForProfile(false);
       setIsSubmitting(false);
       if (profile.role === "driver") {
         navigate("/driver/matches");
       } else if (profile.role === "shipper") {
         navigate("/shipper/dashboard");
+      } else if (profile.role === "admin") {
+        navigate("/admin/dashboard");
       } else {
         navigate("/");
       }
     }
-  }, [profile, isSubmitting, navigate]);
+  }, [profile, user, waitingForProfile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
