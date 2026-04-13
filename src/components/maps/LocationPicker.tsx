@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, Search, X, Loader2, LocateFixed } from 'lucide-react';
 
 // Fix default marker icons for Leaflet
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
