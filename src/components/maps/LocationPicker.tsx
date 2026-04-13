@@ -228,6 +228,17 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
               type="button"
               variant="outline"
               size="sm"
+              onClick={getCurrentLocation}
+              disabled={isLocating}
+              className="h-8"
+              title="Use current location"
+            >
+              {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowMap(!showMap)}
               className="h-8"
             >
