@@ -26,10 +26,9 @@ interface DashboardLayoutProps {
 
 const driverLinks = [
   { name: "Dashboard", path: "/driver/dashboard", icon: LayoutDashboard },
-  { name: "Find Loads", path: "/driver/find-loads", icon: Search },
   { name: "Find Matches", path: "/driver/matches", icon: MapPin },
   { name: "My Vehicle", path: "/driver/my-vehicle", icon: Truck },
-  { name: "Trip History", path: "/driver/trip-history", icon: History },
+  { name: "History", path: "/driver/trip-history", icon: History },
   { name: "Profile", path: "/driver/profile", icon: User },
 ];
 
