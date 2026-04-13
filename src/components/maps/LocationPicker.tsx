@@ -50,8 +50,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   const [searchQuery, setSearchQuery] = useState(value);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Initialize map
   useEffect(() => {
