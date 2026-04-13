@@ -53,6 +53,9 @@ const Login = () => {
       return;
     }
 
+    // Set flag to wait for fresh profile before redirecting
+    setWaitingForProfile(true);
+
     toast({
       title: "Welcome back!",
       description: "You have successfully signed in.",
