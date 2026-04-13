@@ -67,7 +67,7 @@ export function LoadCard({
         </div>
 
         {/* Details */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border/50">
           <div className="flex items-center gap-2">
             <Weight className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">
@@ -82,6 +82,14 @@ export function LoadCard({
               </span>
             </span>
           </div>
+          {load.distance_km && (
+            <div className="flex items-center gap-2">
+              <Route className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm">
+                <span className="font-semibold">{load.distance_km}</span> km
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
 
