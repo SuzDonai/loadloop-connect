@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,9 @@ import {
   Calendar, 
   ArrowRight,
   Info,
+  Route,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +28,18 @@ const vehicleTypes = [
   "Tanker",
 ];
 
+const formatDistance = (meters: number): string => {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
+  return `${Math.round(meters)} m`;
+};
+
+const formatDuration = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes} min`;
+};
+
 const PostCargo = () => {
   const [formData, setFormData] = useState({
     origin: "",
@@ -38,10 +53,60 @@ const PostCargo = () => {
     price: "",
     contactPhone: "",
   });
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropCoords, setDropCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [durationSecs, setDurationSecs] = useState<number | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+
+  // Calculate distance when both coordinates are available
+  useEffect(() => {
+    if (!pickupCoords || !dropCoords) {
+      setDistanceKm(null);
+      setDurationSecs(null);
+      return;
+    }
+
+    const calculateDistance = async () => {
+      setIsCalculating(true);
+      try {
+        // Try Mappls first
+        const { data, error } = await supabase.functions.invoke('mappls-distance', {
+          body: {
+            pickupLat: pickupCoords.lat,
+            pickupLon: pickupCoords.lng,
+            dropLat: dropCoords.lat,
+            dropLon: dropCoords.lng,
+          },
+        });
+
+        if (!error && data?.distance != null) {
+          setDistanceKm(Math.round(data.distance / 1000 * 10) / 10);
+          setDurationSecs(data.duration);
+        } else {
+          // Fallback to OSRM
+          const res = await fetch(
+            `https://router.project-osrm.org/route/v1/driving/${pickupCoords.lng},${pickupCoords.lat};${dropCoords.lng},${dropCoords.lat}?overview=false`
+          );
+          const osrm = await res.json();
+          if (osrm?.routes?.[0]) {
+            setDistanceKm(Math.round(osrm.routes[0].distance / 1000 * 10) / 10);
+            setDurationSecs(osrm.routes[0].duration);
+          }
+        }
+      } catch (err) {
+        console.error('Distance calculation failed:', err);
+      } finally {
+        setIsCalculating(false);
+      }
+    };
+
+    calculateDistance();
+  }, [pickupCoords, dropCoords]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -61,7 +126,6 @@ const PostCargo = () => {
 
     setIsLoading(true);
 
-    // Parse numeric values - use Number() for better precision with integers
     const priceValue = formData.price ? Number(formData.price) : 0;
     const weightValue = Number(formData.weight);
     const volumeValue = formData.volume ? Number(formData.volume) : null;
@@ -79,6 +143,11 @@ const PostCargo = () => {
       price: priceValue,
       contact_phone: formData.contactPhone || null,
       status: "open",
+      pickup_lat: pickupCoords?.lat ?? null,
+      pickup_lon: pickupCoords?.lng ?? null,
+      delivery_lat: dropCoords?.lat ?? null,
+      delivery_lon: dropCoords?.lng ?? null,
+      distance_km: distanceKm,
     });
 
     setIsLoading(false);
@@ -120,17 +189,61 @@ const PostCargo = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <LocationPicker
                 value={formData.origin}
-                onChange={(location) => setFormData({ ...formData, origin: location })}
+                onChange={(location, coords) => {
+                  setFormData({ ...formData, origin: location });
+                  setPickupCoords(coords ?? null);
+                }}
                 placeholder="Search pickup location..."
                 label="Pickup Location"
               />
               <LocationPicker
                 value={formData.destination}
-                onChange={(location) => setFormData({ ...formData, destination: location })}
+                onChange={(location, coords) => {
+                  setFormData({ ...formData, destination: location });
+                  setDropCoords(coords ?? null);
+                }}
                 placeholder="Search drop location..."
                 label="Drop Location"
               />
             </div>
+
+            {/* Distance & Duration display */}
+            {(isCalculating || distanceKm !== null) && (
+              <div className="flex items-center gap-6 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                {isCalculating ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Calculating distance...
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Route className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Distance</p>
+                        <p className="font-semibold text-sm">{distanceKm} km</p>
+                      </div>
+                    </div>
+                    {durationSecs && (
+                      <>
+                        <div className="h-8 w-px bg-border" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-accent-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Est. Time</p>
+                            <p className="font-semibold text-sm">{formatDuration(durationSecs)}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cargo Section */}
