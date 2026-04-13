@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, Search, X, Loader2, LocateFixed } from 'lucide-react';
 
 // Fix default marker icons for Leaflet
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -50,8 +50,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   const [searchQuery, setSearchQuery] = useState(value);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Initialize map
   useEffect(() => {
@@ -135,6 +136,37 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   }, []);
 
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&countrycodes=in&zoom=10`
+          );
+          const data = await res.json();
+          if (data.display_name) {
+            setSearchQuery(data.display_name);
+            onChange(data.display_name, { lat, lng });
+            if (mapRef.current) {
+              updateMarker(lat, lng, mapRef.current);
+            }
+          }
+        } catch (err) {
+          console.error('Reverse geocode failed:', err);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => setIsLocating(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [onChange]);
+
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -192,6 +224,17 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 <X className="w-4 h-4" />
               </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={getCurrentLocation}
+              disabled={isLocating}
+              className="h-8"
+              title="Use current location"
+            >
+              {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+            </Button>
             <Button
               type="button"
               variant="outline"
