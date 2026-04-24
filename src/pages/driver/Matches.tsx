@@ -96,7 +96,10 @@ const DriverMatches = () => {
   const handleAccept = async () => {
     if (!confirmAcceptId || !user) return;
 
-    setAcceptingId(confirmAcceptId);
+    const loadId = confirmAcceptId;
+    const acceptedLoad = (availableLoads as any[]).find((l) => l.id === loadId);
+
+    setAcceptingId(loadId);
     setConfirmAcceptId(null);
 
     try {
@@ -106,17 +109,33 @@ const DriverMatches = () => {
           status: 'assigned',
           assigned_driver_id: user.id 
         })
-        .eq('id', confirmAcceptId)
+        .eq('id', loadId)
         .eq('status', 'open');
 
       if (error) throw error;
       
       queryClient.invalidateQueries({ queryKey: ['driver-available-loads'] });
       queryClient.invalidateQueries({ queryKey: ['driver-accepted-loads'] });
-      toast.success("Load accepted successfully!", {
+      toast.success("Load accepted! Opening directions in Google Maps…", {
         description: "You can view this load in your accepted loads.",
       });
       setActiveTab("accepted");
+
+      // Open Google Maps directions from pickup to drop
+      if (acceptedLoad) {
+        const origin =
+          acceptedLoad.pickup_lat && acceptedLoad.pickup_lon
+            ? `${acceptedLoad.pickup_lat},${acceptedLoad.pickup_lon}`
+            : encodeURIComponent(acceptedLoad.pickup_address || acceptedLoad.pickup_city);
+        const destination =
+          acceptedLoad.delivery_lat && acceptedLoad.delivery_lon
+            ? `${acceptedLoad.delivery_lat},${acceptedLoad.delivery_lon}`
+            : encodeURIComponent(acceptedLoad.delivery_address || acceptedLoad.drop_city);
+        window.open(
+          `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`,
+          "_blank"
+        );
+      }
     } catch (error) {
       toast.error("Failed to accept load. It may already be assigned.");
     } finally {
